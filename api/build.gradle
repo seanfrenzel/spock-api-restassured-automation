@@ -1,0 +1,18 @@
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+dependencies {
+    testImplementation('io.rest-assured:rest-assured:4.3.3') {
+        exclude group: "org.codehaus.groovy"
+    }
+}
+
+test {
+    systemProperties = [
+        'api.baseURI'   : baseURI,
+        'api.username'  : username,
+        'api.password'  : password,
+        'api.testEnvs'  : testEnvs,
+        "java.io.tmpdir": System.getProperty('java.io.tmpdir')
+    ]
+}

@@ -1,0 +1,91 @@
+import org.gradle.internal.os.OperatingSystem
+
+apply plugin: 'com.github.erdi.webdriver-binaries'
+apply plugin: 'com.github.erdi.idea-base'
+
+dependencies {
+    testImplementation("io.github.bonigarcia:webdrivermanager:4.3.1")
+}
+
+ext {
+    chromeDriverVersion = '77.0.3865.40'
+    geckoDriverVersion = '0.24.0'
+    ieDriverVersion = '3.14.0'
+
+    dockerHubHealthyCmd = ['sh', '-c', "docker inspect --format='{{json .State.Health.Status}}' selenium-hub"]
+    hubHealthyCmd = ['sh', '-c', "curl -sSL http://localhost:4444/wd/hub/status"]
+
+    dockerRunCmd = "docker run --name \"selenium-hub\" " +
+                   "-d -p 4444:4444 " +
+                   "-v /dev/shm:/dev/shm " +
+                   "--health-cmd='/opt/bin/check-grid.sh --host 0.0.0.0 --port 4444' --health-interval=1s --health-timeout=30s --health-retries=60 " +
+                   "selenium/standalone-chrome:4.0.0-beta-2-20210317"
+}
+
+// Webdriver binaries
+webdriverBinaries {
+    chromedriver {
+        version = chromeDriverVersion
+        if (OperatingSystem.current().isWindows()) architecture = "X86"
+
+    }
+    geckodriver { version = geckoDriverVersion }
+}
+
+test {
+    systemProperties = [
+            "ui.baseUrl"     : baseUrl,
+            "ui.gridUrl"     : gridUrl,
+            "ui.username"    : username,
+            "ui.password"    : password,
+            "geb.env"        : driver
+    ]
+    maxHeapSize = "1g"
+    jvmArgs '-XX:MaxMetaspaceSize=128m'
+}
+
+task dockerStart {
+    doFirst {
+        exec {
+            println("\n[Starting Docker Container]")
+            workingDir projectDir
+            commandLine('sh', '-c', dockerRunCmd)
+        }
+        exec {
+            println("\n[Container starting]")
+            workingDir projectDir
+            commandLine 'sh', '-c', "docker ps"
+        }
+        def count = 0
+        while (!dockerHubHealthyCmd.execute()
+                                   .text
+                                   .contains('healthy') &&
+               !hubHealthyCmd.execute()
+                             .text
+                             .contains('"ready": true')) { // waiting for hub to be ready
+            count++
+            println("Waiting for hub start ($count)")
+            if (count == 60) throw new Exception('hub was not started')
+            sleep(1000)
+        }
+    }
+}
+
+task dockerStop {
+    doFirst {
+        exec {
+            println("\n[Stopping Docker Container]")
+            workingDir projectDir
+            commandLine 'sh', '-c', "docker ps | grep selenium-hub | awk '{print \$1}' | xargs docker stop"
+        }
+        exec {
+            println("\n[Removing Docker Container]")
+            workingDir projectDir
+            commandLine 'sh', '-c', "docker container rm selenium-hub"
+        }
+    }
+}
+
+tasks.withType(GroovyCompile) {
+    groovyOptions.forkOptions.memoryMaximumSize = '256m'
+}
