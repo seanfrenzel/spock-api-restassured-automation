@@ -1,31 +1,28 @@
-plugins {
-    id "com.github.erdi.webdriver-binaries" version "2.2" apply false
-    id "com.github.erdi.idea-base" version "2.2" apply false
+apply plugin: 'groovy'
+apply plugin: 'idea'
+apply plugin: 'maven-publish'
+apply plugin: 'java'
+
+group = 'com.qa'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
 }
 
-allprojects {
-    apply plugin: 'groovy'
-    apply plugin: 'idea'
-    apply plugin: 'maven-publish'
-    apply plugin: 'java'
+ext {
+    gebVersion = '4.0'
+    seleniumVersion = '3.141.59'
+}
 
-    group = 'com.qa'
-
-    ext {
-        gebVersion = '4.0'
-        seleniumVersion = '3.141.59'
+dependencies {
+    testImplementation('io.rest-assured:rest-assured:4.3.3') {
+        exclude group: "org.codehaus.groovy"
     }
 
-    repositories {
-        mavenLocal()
-        mavenCentral()
-        jcenter()
-    }
-
-    dependencies {
-        // Needed for older version of junit
-        testImplementation "org.junit.jupiter:junit-jupiter:5.7.0"
-        testRuntimeOnly "org.junit.vintage:junit-vintage-engine:5.7.0"
+    // Needed for older version of junit
+    testImplementation "org.junit.jupiter:junit-jupiter:5.7.0"
+    testRuntimeOnly "org.junit.vintage:junit-vintage-engine:5.7.0"
 
         // If using Spock, need to depend on geb-spock
         testImplementation "org.gebish:geb-spock:${gebVersion}"
@@ -41,40 +38,50 @@ allprojects {
         testImplementation 'com.aoe:geb-spock-reports:0.3.0-RC1'
         testImplementation("com.athaydes:spock-reports:2.0-RC2") { transitive = false }
 
-        // Log4j2 Dependencies
-        testImplementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.2'
-        testImplementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.2'
-    }
+    // Log4j2 Dependencies
+    testImplementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.2'
+    testImplementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.2'
+}
 
-    tasks.withType(Test) {
-        useJUnitPlatform()
-        outputs.upToDateWhen { false }  // Always run tests
-        ignoreFailures = Boolean.getBoolean('test.ignoreFailures')
+test {
+    systemProperties = [
+            'api.baseUri'   : baseUri,
+            'api.username'  : username,
+            'api.password'  : password,
+            'api.testEnvs'  : testEnvs,
+            "java.io.tmpdir": System.getProperty('java.io.tmpdir')
+    ]
+}
 
-        //Parallel execution by is disabled by default. Uncomment one of the following to enable:
-        //
-        // Some OS and CPUs report twice as many cores due to HyperThreading, so we use:
-        // maxParallelForks(Runtime.runtime.availableProcessors().intdiv(2))
-        //
-        // Others report the correct number of physical cores, so we simply use:
-        // maxParallelForks(Runtime.runtime.availableProcessors())
+tasks.withType(Test) {
+    useJUnitPlatform()
+    outputs.upToDateWhen { false }  // Always run tests
+    ignoreFailures = Boolean.getBoolean('test.ignoreFailures')
 
-        testLogging {
-            showStandardStreams = true
-            events "skipped", "failed"
+    //Parallel execution by is disabled by default. Uncomment one of the following to enable:
+    //
+    // Some OS and CPUs report twice as many cores due to HyperThreading, so we use:
+    // maxParallelForks(Runtime.runtime.availableProcessors().intdiv(2))
+    //
+    // Others report the correct number of physical cores, so we simply use:
+    // maxParallelForks(Runtime.runtime.availableProcessors())
 
-            showExceptions = true
-            showCauses = true
-            showStackTraces = true
-            exceptionFormat = 'full'
+    testLogging {
+        showStandardStreams = true
+        events "skipped", "failed"
 
-            afterSuite { desc, result ->
-                if (!desc.parent) { // will match the outermost suite
-                    def output = "Results: ${result.resultType}\n- Tests    ${result.testCount}\n- Passed   ${result.successfulTestCount}\n- Failed   ${result.failedTestCount}\n- Skipped  ${result.skippedTestCount}"
-                    def repeatLength = "Results: ${result.resultType}".length()
-                    println('\n' + ('-' * repeatLength) + '\n' + output + '\n' + ('-' * repeatLength))
-                }
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+        exceptionFormat = 'full'
+
+        afterSuite { desc, result ->
+            if (!desc.parent) { // will match the outermost suite
+                def output = "Results: ${result.resultType}\n- Tests    ${result.testCount}\n- Passed   ${result.successfulTestCount}\n- Failed   ${result.failedTestCount}\n- Skipped  ${result.skippedTestCount}"
+                def repeatLength = "Results: ${result.resultType}".length()
+                println('\n' + ('-' * repeatLength) + '\n' + output + '\n' + ('-' * repeatLength))
             }
         }
     }
 }
+

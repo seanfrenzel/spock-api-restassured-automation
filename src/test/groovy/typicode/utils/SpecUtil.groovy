@@ -36,7 +36,7 @@ class SpecUtil {
      */
     static boolean isTestEnv() {
         List<String> testEnvs = System.getProperty('api.testEnvs').toLowerCase().split(',')
-        String host = System.getProperty('api.baseURI').toLowerCase()
+        String host = System.getProperty('api.baseUri').toLowerCase()
 
         testEnvs.stream().anyMatch({ host.contains(it) })
     }

@@ -1,8 +1,8 @@
 package typicode.tests
 
 import groovy.util.logging.Log4j2
-import typicode.base.RestAssuredSetupBase
 import spock.lang.Unroll
+import typicode.base.RestAssuredSetupBase
 
 @Log4j2
 class ExampleApiSpec extends RestAssuredSetupBase {
@@ -28,8 +28,8 @@ class ExampleApiSpec extends RestAssuredSetupBase {
     def "Get Example Simplified"() {
         expect: "Expected Json Value is Found"
         request.get("posts")
-               .jsonPath()
-               .getJsonObject("title[1]") == "qui est esse"
+                .jsonPath()
+                .getJsonObject("title[1]") == "qui est esse"
     }
 
     /**
